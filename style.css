@@ -9,6 +9,9 @@
   --background: #202124;
   --background-100: #26282b;
   --background-200: #3b3c3f;
+  --text-primary: #f3f4f6;
+  --text-secondary: #c4c7ce;
+  --text-muted: #9aa0a6;
   --font-xs: 10px;
   --font-sm: 12px;
   --font-base: 14px;
@@ -16,6 +19,12 @@
   --font-xl: 18px;
   --font-2xl: 20px;
   --font-3xl: 22px;
+
+  /* Force dark That Open UI tokens even if OS is in light mode */
+  --bim-ui_bg-base: var(--bim-ui_gray-0, #19191e);
+  --bim-ui_bg-contrast-10: var(--bim-ui_gray-1, #262629);
+  --bim-ui_bg-contrast-20: var(--bim-ui_gray-2, #3c3c41);
+  --bim-ui_bg-contrast-100: var(--bim-ui_gray-10, #f0f0f0);
 }
 
 * {
@@ -24,13 +33,42 @@
   padding: 0;
 }
 
+html.bim-ui-dark,
+html {
+  color-scheme: dark;
+}
+
 #app {
   display: grid;
   grid-template-columns: 300px 1fr;
   grid-template-areas: 'sidebar content';
   height: 100vh;
-  background-color: var(--bim-ui_bg-base);
-  color: #fff;
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
+/* bim-label text lives in shadow DOM — drive it via its CSS variable */
+bim-label {
+  --bim-label--c: var(--text-primary);
+  color: var(--text-primary);
+}
+
+bim-label.muted,
+.card-property bim-label:first-child {
+  --bim-label--c: var(--text-muted);
+  color: var(--text-muted);
+}
+
+bim-button {
+  --bim-label--c: var(--text-primary);
+}
+
+bim-panel,
+bim-panel-section,
+bim-table,
+bim-toolbar,
+bim-toolbar-section {
+  color: var(--text-primary);
 }
 
 /* General Styles */
@@ -75,9 +113,8 @@ button:hover {
   height: 100%;
 }
 
-/* Sidebar styles */
-
 #sidebar {
+  grid-area: sidebar;
   background-color: var(--background-100);
   padding: 25px;
   display: flex;
@@ -85,12 +122,20 @@ button:hover {
   row-gap: 40px;
 }
 
+#content {
+  grid-area: content;
+  min-width: 0;
+  overflow: auto;
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
 #company-logo {
   height: 65px;
 }
 
 #nav-buttons a {
-  color: white;
+  color: var(--text-primary);
   text-decoration: none;
 }
 
@@ -158,7 +203,7 @@ header {
 }
 
 #projects-list a {
-  color: white;
+  color: var(--text-primary);
   text-decoration: none;
 }
 
@@ -209,7 +254,7 @@ form {
   width: 450px;
   border-radius: 10px;
   background-color: var(--background-100);
-  color: white;
+  color: var(--text-primary);
 }
 
 form h2 {
@@ -242,7 +287,7 @@ label {
 input,
 textarea,
 select {
-  color: white;
+  color: var(--text-primary);
   background-color: var(--background-200);
   padding: 15px;
   border-radius: 8px;
@@ -265,12 +310,36 @@ select:focus {
   flex-direction: column;
 }
 
+#project-details {
+  height: 100%;
+  overflow: hidden;
+}
+
 #project-details > .main-page-content {
   display: grid;
   padding: 20px 40px;
   gap: 30px;
-  grid-template-columns: 475px 1fr;
+  grid-template-columns: minmax(280px, 475px) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+#project-details > .main-page-content > .project-sidebar {
+  display: flex;
+  flex-direction: column;
+  row-gap: 30px;
+  min-height: 0;
+  overflow: auto;
+}
+
+#project-details > .main-page-content > bim-viewport,
+#viewer-container {
+  width: 100%;
   height: 100%;
+  min-height: 560px;
+  min-width: 0;
+  display: block;
 }
 
 .btn-secondary {

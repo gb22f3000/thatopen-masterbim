@@ -1,7 +1,7 @@
+import * as THREE from 'three'
 import * as OBC from '@thatopen/components'
 import * as OBCF from '@thatopen/components-front'
 import * as BUI from '@thatopen/ui'
-import * as THREE from 'three'
 import { TodoData, TodoInput } from './base-types'
 
 export class TodoCreator extends OBC.Component implements OBC.Disposable {
@@ -9,10 +9,11 @@ export class TodoCreator extends OBC.Component implements OBC.Disposable {
   enabled = true
   onTodoCreated = new OBC.Event<TodoData>()
   onTodoDeleted = new OBC.Event<TodoData>()
-  onDisposed: OBC.Event<any> = new OBC.Event()
+  onDisposed = new OBC.Event<any>()
 
   private _world: OBC.World
   private _list: TodoData[] = []
+  private _markers = new Map<string, OBCF.Mark>()
 
   constructor(components: OBC.Components) {
     super(components)
@@ -21,24 +22,33 @@ export class TodoCreator extends OBC.Component implements OBC.Disposable {
 
   async dispose() {
     this.enabled = false
+    for (const marker of this._markers.values()) {
+      marker.dispose()
+    }
+    this._markers.clear()
     this._list = []
     this.onDisposed.trigger()
   }
 
   setup() {
     const highlighter = this.components.get(OBCF.Highlighter)
-    highlighter.add(
-      `${TodoCreator.uuid}-priority-Low`,
-      new THREE.Color(0x59bc59)
-    )
-    highlighter.add(
-      `${TodoCreator.uuid}-priority-Medium`,
-      new THREE.Color(0x597cff)
-    )
-    highlighter.add(
-      `${TodoCreator.uuid}-priority-High`,
-      new THREE.Color(0xff7676)
-    )
+    const styles: Array<{ id: string; color: string }> = [
+      { id: 'Low', color: '#59bc59' },
+      { id: 'Medium', color: '#597cff' },
+      { id: 'High', color: '#ff7676' },
+    ]
+
+    for (const style of styles) {
+      const name = `${TodoCreator.uuid}-priority-${style.id}`
+      if (!highlighter.styles.has(name)) {
+        highlighter.styles.set(name, {
+          color: new THREE.Color(style.color),
+          opacity: 1,
+          transparent: false,
+          renderedFaces: 0,
+        })
+      }
+    }
   }
 
   set world(world: OBC.World) {
@@ -53,16 +63,17 @@ export class TodoCreator extends OBC.Component implements OBC.Disposable {
 
     if (value) {
       for (const todo of this._list) {
-        const fragmentIdMap = fragments.guidToFragmentIdMap(todo.ifcGuids)
-        highlighter.highlightByID(
-          `${TodoCreator.uuid}-priority-${todo.priority}`,
-          fragmentIdMap,
-          false,
-          false
-        )
+        void fragments.guidsToModelIdMap(todo.ifcGuids).then((modelIdMap) => {
+          highlighter.highlightByID(
+            `${TodoCreator.uuid}-priority-${todo.priority}`,
+            modelIdMap,
+            false,
+            false
+          )
+        })
       }
     } else {
-      highlighter.clear()
+      void highlighter.clear()
     }
   }
 
@@ -70,12 +81,13 @@ export class TodoCreator extends OBC.Component implements OBC.Disposable {
     return [...this._list]
   }
 
-  addTodo(data: TodoInput) {
+  async addTodo(data: TodoInput) {
     if (!this.enabled) return
 
     const fragments = this.components.get(OBC.FragmentsManager)
     const highlighter = this.components.get(OBCF.Highlighter)
-    const guids = fragments.fragmentIdMapToGuids(highlighter.selection.select)
+    const selection = highlighter.selection.select
+    const guids = await fragments.modelIdMapToGuids(selection)
 
     const camera = this._world.camera
     if (!camera.hasCameraControls()) {
@@ -89,18 +101,13 @@ export class TodoCreator extends OBC.Component implements OBC.Disposable {
     const target = new THREE.Vector3()
     camera.controls.getTarget(target)
 
-    const id = OBC.UUID.create()
-
     const todoData: TodoData = {
-      id: id,
+      id: OBC.UUID.create(),
       name: data.name,
       task: data.task,
       priority: data.priority,
       ifcGuids: guids,
-      camera: {
-        position,
-        target,
-      },
+      camera: { position, target },
     }
 
     this._list.push(todoData)
@@ -110,22 +117,23 @@ export class TodoCreator extends OBC.Component implements OBC.Disposable {
   deleteTodo(todo: TodoData) {
     if (!this.enabled) return
 
-    const todos = this.list
+    const marker = this._markers.get(todo.id)
+    if (marker) {
+      marker.dispose()
+      this._markers.delete(todo.id)
+    }
 
-    const updatedTodoList = todos.filter((t) => t.id !== todo.id)
-
-    this._list = updatedTodoList
-
-    this.onTodoDeleted.trigger(todos.find((t) => t.id === todo.id) || todo)
+    this._list = this._list.filter((t) => t.id !== todo.id)
+    this.onTodoDeleted.trigger(todo)
   }
 
   async highlightTodo(todo: TodoData) {
     if (!this.enabled) return
 
     const fragments = this.components.get(OBC.FragmentsManager)
-    const fragmentIdMap = fragments.guidToFragmentIdMap(todo.ifcGuids)
+    const modelIdMap = await fragments.guidsToModelIdMap(todo.ifcGuids)
     const highlighter = this.components.get(OBCF.Highlighter)
-    highlighter.highlightByID('select', fragmentIdMap)
+    await highlighter.highlightByID('select', modelIdMap)
 
     if (!this._world) {
       throw new Error('World is not set for TodoCreator')
@@ -149,36 +157,31 @@ export class TodoCreator extends OBC.Component implements OBC.Disposable {
     )
   }
 
-  addTodoMarker(todo: TodoData) {
+  async addTodoMarker(todo: TodoData) {
     if (!this.enabled) return
-
     if (todo.ifcGuids.length === 0) return
+    if (this._markers.has(todo.id)) return
 
     const fragments = this.components.get(OBC.FragmentsManager)
-    const fragmentIdMap = fragments.guidToFragmentIdMap(todo.ifcGuids)
+    const modelIdMap = await fragments.guidsToModelIdMap(todo.ifcGuids)
     const boundingBoxer = this.components.get(OBC.BoundingBoxer)
-    boundingBoxer.addFragmentIdMap(fragmentIdMap)
-    const { center } = boundingBoxer.getSphere()
+    const center = await boundingBoxer.getCenter(modelIdMap)
 
     const label = BUI.Component.create<BUI.Label>(() => {
       return BUI.html`
-                <bim-label
-                    @mouseover=${() => {
-                      const highlighter = this.components.get(OBCF.Highlighter)
-                      highlighter.highlightByID(
-                        'hover',
-                        fragmentIdMap,
-                        true,
-                        false
-                      )
-                    }}
-                    style="background-color: var(--bim-ui_bg-contrast-100); cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 999px; pointer-events: all;"
-                    icon="fa:map-marker"
-                ></bim-label>
-            `
+        <bim-label
+          @mouseover=${() => {
+            const highlighter = this.components.get(OBCF.Highlighter)
+            void highlighter.highlightByID('hover', modelIdMap, true, false)
+          }}
+          style="background-color: var(--bim-ui_bg-contrast-100); cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 999px; pointer-events: all;"
+          icon="fa:map-marker"
+        ></bim-label>
+      `
     })
 
     const marker = new OBCF.Mark(this._world, label)
     marker.three.position.copy(center)
+    this._markers.set(todo.id, marker)
   }
 }

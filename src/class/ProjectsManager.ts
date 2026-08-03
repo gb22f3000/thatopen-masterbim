@@ -43,6 +43,10 @@ export class ProjectsManager {
     this.onProjectDeleted(id)
   }
 
+  replaceList(projects: Project[]) {
+    this.list = projects
+  }
+
   updateProject(id: string) {
     const project = this.getProject(id)
     if (!project) return

@@ -1,14 +1,11 @@
 import * as React from 'react'
-import * as Firestore from 'firebase/firestore'
 import { ProjectsManager } from '../class/ProjectsManager'
-import { getCollection } from '../firebase'
 import { IProject, ProjectStatus, Role } from '../class/Project'
+import { saveProjectsToStorage } from '../storage/projectsStore'
 
 interface Props {
   projectsManager: ProjectsManager
 }
-
-const projectsCollection = getCollection<IProject>('/projects')
 
 export function ProjectsForm(props: Props) {
   const onFormSubmit = (e: React.FormEvent) => {
@@ -29,16 +26,14 @@ export function ProjectsForm(props: Props) {
     }
 
     try {
-      Firestore.addDoc(projectsCollection, projectData)
-      const project = props.projectsManager.newProject(projectData)
+      props.projectsManager.newProject(projectData)
+      saveProjectsToStorage(props.projectsManager.list)
       projectForm.reset()
 
       const modal = document.getElementById('new-project-modal')
-
-      if (!(modal && modal instanceof HTMLDialogElement)) {
-        return
+      if (modal instanceof HTMLDialogElement) {
+        modal.close()
       }
-      modal.close()
     } catch (err) {
       alert((err as Error).message)
     }
@@ -80,7 +75,7 @@ export function ProjectsForm(props: Props) {
                 fontStyle: 'italic',
               }}
             >
-              TIP: Give it a short name
+              TIP: Give it a short name (min 5 characters)
             </bim-label>
           </div>
           <div className="form-field-container">
@@ -160,12 +155,6 @@ export function ProjectsForm(props: Props) {
                 padding: '10px',
                 cursor: 'pointer',
                 transition: 'background-color 0.3s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgb(16, 120, 16)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgb(18, 145, 18)'
               }}
             >
               Submit

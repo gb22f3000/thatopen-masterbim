@@ -15,45 +15,51 @@ export function ProjectCard(props: Props) {
             padding: 10,
             borderRadius: 8,
             aspectRatio: 1,
+            color: '#fff',
           }}
         >
           FP
         </p>
         <div>
           <bim-label
-            style={{
-              fontSize: '16px',
-              fontWeight: 'bold',
-              color: '#fff',
-            }}
+            style={
+              {
+                fontSize: '16px',
+                fontWeight: 'bold',
+                ['--bim-label--c' as any]: 'var(--text-primary)',
+              } as React.CSSProperties
+            }
           >
             {props.project.name}
           </bim-label>
-          <bim-label style={{ color: '#fff' }}>
+          <bim-label
+            className="muted"
+            style={
+              {
+                ['--bim-label--c' as any]: 'var(--text-secondary)',
+              } as React.CSSProperties
+            }
+          >
             {props.project.description}
           </bim-label>
         </div>
       </div>
       <div className="card-content">
         <div className="card-property">
-          <bim-label style={{ color: '#969696' }}>Status</bim-label>
-          <bim-label style={{ color: '#fff' }}>
-            {props.project.status}
-          </bim-label>
+          <bim-label className="muted">Status</bim-label>
+          <bim-label>{props.project.status}</bim-label>
         </div>
         <div className="card-property">
-          <bim-label style={{ color: '#969696' }}>Role</bim-label>
-          <bim-label style={{ color: '#fff' }}>{props.project.role}</bim-label>
+          <bim-label className="muted">Role</bim-label>
+          <bim-label>{props.project.role}</bim-label>
         </div>
         <div className="card-property">
-          <bim-label style={{ color: '#969696' }}>Cost</bim-label>
-          <bim-label style={{ color: '#fff' }}>${props.project.cost}</bim-label>
+          <bim-label className="muted">Cost</bim-label>
+          <bim-label>${props.project.cost}</bim-label>
         </div>
         <div className="card-property">
-          <bim-label style={{ color: '#969696' }}>Estimated progress</bim-label>
-          <bim-label style={{ color: '#fff' }}>
-            {props.project.progress * 100}%
-          </bim-label>
+          <bim-label className="muted">Estimated progress</bim-label>
+          <bim-label>{props.project.progress * 100}%</bim-label>
         </div>
       </div>
     </div>

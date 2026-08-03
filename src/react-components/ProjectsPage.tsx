@@ -1,54 +1,35 @@
 import * as React from 'react'
 import { useState, useEffect } from 'react'
 import * as Router from 'react-router-dom'
-import * as Firestore from 'firebase/firestore'
 
-import { IProject, Project } from '../class/Project'
+import { Project } from '../class/Project'
 import { ProjectsManager } from '../class/ProjectsManager'
 import { ProjectCard } from './ProjectCard'
 import { SearchBox } from './SearchBox'
 import { ProjectsForm } from './ProjectsForm'
-
-import { getCollection } from '../firebase'
+import { saveProjectsToStorage } from '../storage/projectsStore'
 import * as BUI from '@thatopen/ui'
 
 interface Props {
   projectsManager: ProjectsManager
 }
 
-const projectsCollection = getCollection<IProject>('/projects')
-
 export function ProjectsPage(props: Props) {
-  const [projects, setProjects] = useState<Project[]>(
-    props.projectsManager.list
-  )
+  const [projects, setProjects] = useState<Project[]>([
+    ...props.projectsManager.list,
+  ])
 
-  props.projectsManager.onProjectCreated = () => {
+  const refresh = () => {
     setProjects([...props.projectsManager.list])
+    saveProjectsToStorage(props.projectsManager.list)
   }
 
-  const getFirestoreProjects = async () => {
-    const firebaseProjects = await Firestore.getDocs(projectsCollection)
-
-    for (const doc of firebaseProjects.docs) {
-      const data = doc.data()
-      const project: IProject = {
-        ...data,
-        finishDate: (
-          data.finishDate as unknown as Firestore.Timestamp
-        ).toDate(),
-      }
-
-      try {
-        props.projectsManager.newProject(project, doc.id)
-      } catch (err) {
-        console.log('Error creating project', err)
-      }
-    }
-  }
+  props.projectsManager.onProjectCreated = () => refresh()
+  props.projectsManager.onProjectDeleted = () => refresh()
+  props.projectsManager.onProjectUpdate = () => refresh()
 
   useEffect(() => {
-    getFirestoreProjects()
+    setProjects([...props.projectsManager.list])
   }, [])
 
   const projectCards = projects.map((project) => {
@@ -59,20 +40,15 @@ export function ProjectsPage(props: Props) {
     )
   })
 
-  useEffect(() => {
-    console.log('Projects state updated', projects)
-  }, [projects])
-
   const onNewProjectClick = () => {
     const modal = document.getElementById('new-project-modal')
-    if (!(modal && modal instanceof HTMLDialogElement)) {
-      return
-    }
+    if (!(modal && modal instanceof HTMLDialogElement)) return
     modal.showModal()
   }
 
   const onImportProject = () => {
     props.projectsManager.importFromJSON()
+    refresh()
   }
 
   const onExportProject = () => {
@@ -85,32 +61,32 @@ export function ProjectsPage(props: Props) {
 
   const importButton = BUI.Component.create<BUI.Button>(() => {
     return BUI.html`
-          <bim-button
-            id="import-projects-btn"
-            icon="iconoir:import"
-            @click=${onImportProject}
-          ></bim-button>     
+      <bim-button
+        id="import-projects-btn"
+        icon="iconoir:import"
+        @click=${onImportProject}
+      ></bim-button>
     `
   })
 
   const exportButton = BUI.Component.create<BUI.Button>(() => {
     return BUI.html`
-          <bim-button
-            id="export-projects-btn"
-            icon="ph:export"
-            @click=${onExportProject}
-          ></bim-button>     
+      <bim-button
+        id="export-projects-btn"
+        icon="ph:export"
+        @click=${onExportProject}
+      ></bim-button>
     `
   })
 
   const newProjectButton = BUI.Component.create<BUI.Button>(() => {
     return BUI.html`
-          <bim-button
-            id="new-project-btn"
-            label="New project"
-            icon="fluent:add-20-regular"
-            @click=${onNewProjectClick}
-          ></bim-button>  
+      <bim-button
+        id="new-project-btn"
+        label="New project"
+        icon="fluent:add-20-regular"
+        @click=${onNewProjectClick}
+      ></bim-button>
     `
   })
 
@@ -121,13 +97,18 @@ export function ProjectsPage(props: Props) {
     projectControls?.appendChild(newProjectButton)
 
     const cancelButton = document.getElementById('close-modal-btn')
-    cancelButton?.addEventListener('click', () => {
+    const onCancel = () => {
       const modal = document.getElementById('new-project-modal')
-      if (!(modal && modal instanceof HTMLDialogElement)) {
-        return
-      }
-      modal.close()
-    })
+      if (modal instanceof HTMLDialogElement) modal.close()
+    }
+    cancelButton?.addEventListener('click', onCancel)
+
+    return () => {
+      importButton.remove()
+      exportButton.remove()
+      newProjectButton.remove()
+      cancelButton?.removeEventListener('click', onCancel)
+    }
   }, [])
 
   return (
@@ -144,7 +125,7 @@ export function ProjectsPage(props: Props) {
       {projects.length > 0 ? (
         <div id="projects-list">{projectCards}</div>
       ) : (
-        <p>There is no projects to display</p>
+        <p>There are no projects to display</p>
       )}
     </div>
   )

@@ -1,14 +1,11 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import * as Router from 'react-router-dom'
 import { ProjectsManager } from '../class/ProjectsManager'
 import { ProjectsForm } from './ProjectsForm'
-
 import { IFCViewer } from './IFCViewer'
-
-import { deleteDocument, updateDocument } from '../firebase'
+import { saveProjectsToStorage } from '../storage/projectsStore'
 import * as OBC from '@thatopen/components'
 import * as BUI from '@thatopen/ui'
-
 import { todoTool, TodoData, TodoCreator } from '../bim-components/TodoCreator'
 
 interface Props {
@@ -33,39 +30,26 @@ export function ProjectDetailsPage(props: Props) {
   const todoContainer = React.useRef<HTMLDivElement>(null)
 
   const navigateTo = Router.useNavigate()
-  props.projectsManager.deleteProject = async (id) => {
-    await deleteDocument('/projects', id)
+  const originalDelete = props.projectsManager.deleteProject.bind(
+    props.projectsManager
+  )
+  props.projectsManager.deleteProject = (id) => {
+    originalDelete(id)
+    saveProjectsToStorage(props.projectsManager.list)
     navigateTo('/')
   }
 
   const onEditProjectClick = () => {
     const modal = document.getElementById('new-project-modal')
-    if (!(modal && modal instanceof HTMLDialogElement)) {
-      return
-    }
+    if (!(modal && modal instanceof HTMLDialogElement)) return
     modal.showModal()
   }
 
-  props.projectsManager.updateProject = async (id) => {
-    const projectData = {
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      status: project.status,
-      cost: project.cost,
-      role: project.role,
-      finishDate: project.finishDate,
-      progress: project.progress,
-    }
-
-    await updateDocument('/projects', id, projectData)
-  }
-
-  const onRowCreated = (event) => {
+  const onRowCreated = (event: any) => {
     event.stopImmediatePropagation()
     const { row } = event.detail
     row.addEventListener('click', () => {
-      todoCreator.highlightTodo({
+      void todoCreator.highlightTodo({
         id: row.data.Id,
         name: row.data.Name,
         task: row.data.Task,
@@ -115,23 +99,21 @@ export function ProjectDetailsPage(props: Props) {
     dashboard.current?.appendChild(todoTable)
 
     todoTable.dataTransform = {
-      Actions: (value, rowData) => {
+      Actions: (_value, rowData) => {
         const todoId = rowData.Id
         const todo = todoCreator.list.find((t) => t.id === todoId)
         if (!todo) return BUI.html``
 
         return BUI.html`
-          <div>
+          <div style="display:flex; gap: 6px;">
             <bim-button
               @click=${() => todoCreator.deleteTodo(todo)}
               icon="material-symbols:delete"
-              style="background-color: red";
+              style="background-color: red;"
             ></bim-button>
-          </div>
-          <div>
             <bim-button
               icon="ion:navigate"
-              @click=${() => todoCreator.addTodoMarker(todo)}
+              @click=${() => void todoCreator.addTodoMarker(todo)}
             ></bim-button>
           </div>
         `
@@ -152,17 +134,18 @@ export function ProjectDetailsPage(props: Props) {
 
   return (
     <div id="project-details" className="page">
+      <ProjectsForm projectsManager={props.projectsManager} />
       <header>
         <div>
           <bim-label
-            style={{ color: '#fff', fontSize: 'var(--font-xl)' }}
+            style={{ fontSize: 'var(--font-xl)', ['--bim-label--c' as any]: 'var(--text-primary)' } as React.CSSProperties}
             data-project-info="name"
           >
             {project.name}
           </bim-label>
           <bim-label
             data-project-info="description"
-            style={{ color: '#969696', fontSize: '15px' }}
+            style={{ fontSize: '15px', ['--bim-label--c' as any]: 'var(--text-muted)' } as React.CSSProperties}
           >
             {project.description}
           </bim-label>
@@ -177,8 +160,7 @@ export function ProjectDetailsPage(props: Props) {
         </div>
       </header>
       <div className="main-page-content">
-        <ProjectsForm projectsManager={props.projectsManager} />
-        <div style={{ display: 'flex', flexDirection: 'column', rowGap: 30 }}>
+        <div className="project-sidebar">
           <div className="dashboard-card" style={{ padding: '30px 0' }}>
             <div
               style={{
@@ -212,7 +194,7 @@ export function ProjectDetailsPage(props: Props) {
             <div style={{ padding: '0 30px' }}>
               <div>
                 <bim-label
-                  style={{ color: '#fff', fontSize: 'var(--font-xl)' }}
+                  style={{ fontSize: 'var(--font-xl)', ['--bim-label--c' as any]: 'var(--text-primary)' } as React.CSSProperties}
                   data-project-info="cardName"
                 >
                   {project.name}
@@ -231,41 +213,45 @@ export function ProjectDetailsPage(props: Props) {
               >
                 <div>
                   <bim-label
-                    style={{ color: '#969696', fontSize: 'var(--font-sm)' }}
+                    className="muted"
+                    style={{ fontSize: 'var(--font-sm)' }}
                   >
                     Status
                   </bim-label>
-                  <bim-label style={{ color: '#fff' }}>
+                  <bim-label>
                     {project.status}
                   </bim-label>
                 </div>
                 <div>
                   <bim-label
-                    style={{ color: '#969696', fontSize: 'var(--font-sm)' }}
+                    className="muted"
+                    style={{ fontSize: 'var(--font-sm)' }}
                   >
                     Cost
                   </bim-label>
-                  <bim-label style={{ color: '#fff' }}>
+                  <bim-label>
                     ${project.cost}
                   </bim-label>
                 </div>
                 <div>
                   <bim-label
-                    style={{ color: '#969696', fontSize: 'var(--font-sm)' }}
+                    className="muted"
+                    style={{ fontSize: 'var(--font-sm)' }}
                   >
                     Role
                   </bim-label>
-                  <bim-label style={{ color: '#fff' }}>
+                  <bim-label>
                     {project.role}
                   </bim-label>
                 </div>
                 <div>
                   <bim-label
-                    style={{ color: '#969696', fontSize: 'var(--font-sm)' }}
+                    className="muted"
+                    style={{ fontSize: 'var(--font-sm)' }}
                   >
                     Finish Date
                   </bim-label>
-                  <bim-label style={{ color: '#fff' }}>
+                  <bim-label>
                     {project.finishDate.toDateString()}
                   </bim-label>
                 </div>
@@ -303,7 +289,7 @@ export function ProjectDetailsPage(props: Props) {
                 justifyContent: 'space-between',
               }}
             >
-              <bim-label style={{ color: '#fff', fontSize: 'var(--font-lg)' }}>
+              <bim-label style={{ fontSize: 'var(--font-lg)' }}>
                 To-Do
               </bim-label>
               <div
@@ -322,10 +308,7 @@ export function ProjectDetailsPage(props: Props) {
                     columnGap: 10,
                   }}
                 >
-                  <bim-label
-                    icon="material-symbols:search"
-                    style={{ color: '#fff' }}
-                  ></bim-label>
+                  <bim-label icon="material-symbols:search"></bim-label>
                   <bim-text-input placeholder="Search To-Do's name"></bim-text-input>
                 </div>
               </div>
@@ -337,3 +320,4 @@ export function ProjectDetailsPage(props: Props) {
     </div>
   )
 }
+
