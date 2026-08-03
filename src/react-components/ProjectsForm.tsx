@@ -2,12 +2,15 @@ import * as React from 'react'
 import { ProjectsManager } from '../class/ProjectsManager'
 import { IProject, ProjectStatus, Role } from '../class/Project'
 import { saveProjectsToStorage } from '../storage/projectsStore'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   projectsManager: ProjectsManager
 }
 
 export function ProjectsForm(props: Props) {
+  const { session } = useAuth()
+
   const onFormSubmit = (e: React.FormEvent) => {
     const projectForm = document.getElementById('new-project-form')
     if (!(projectForm && projectForm instanceof HTMLFormElement)) {
@@ -23,6 +26,7 @@ export function ProjectsForm(props: Props) {
       status: formData.get('status') as ProjectStatus,
       role: formData.get('role') as Role,
       finishDate: new Date(formData.get('finishDate') as string),
+      ownerId: session?.userId,
     }
 
     try {
@@ -56,36 +60,28 @@ export function ProjectsForm(props: Props) {
         <h2>New Project</h2>
         <div className="input-list">
           <div className="form-field-container">
-            <bim-label
-              icon="material-symbols:apartment"
-              style={{ marginBottom: 5 }}
-            >
-              Name
-            </bim-label>
+            <label htmlFor="project-name">Name</label>
             <input
+              id="project-name"
               name="name"
               type="text"
               placeholder="What's the name of your project?"
-            ></input>
-            <bim-label
+            />
+            <p
               style={{
-                color: 'gray',
+                color: 'var(--text-muted)',
                 fontSize: 'var(--font-sm)',
                 marginTop: 5,
                 fontStyle: 'italic',
               }}
             >
               TIP: Give it a short name (min 5 characters)
-            </bim-label>
+            </p>
           </div>
           <div className="form-field-container">
-            <bim-label
-              icon="material-symbols:subject"
-              style={{ marginBottom: 5 }}
-            >
-              Description
-            </bim-label>
+            <label htmlFor="project-description">Description</label>
             <textarea
+              id="project-description"
               name="description"
               cols={30}
               rows={5}
@@ -94,37 +90,24 @@ export function ProjectsForm(props: Props) {
             />
           </div>
           <div className="form-field-container">
-            <bim-label
-              icon="material-symbols:person"
-              style={{ marginBottom: 5 }}
-            >
-              Role
-            </bim-label>
-            <bim-dropdown name="role">
-              <bim-option label="Architect" checked></bim-option>
-              <bim-option label="Engineer"></bim-option>
-              <bim-option label="Developer"></bim-option>
-            </bim-dropdown>
+            <label htmlFor="project-role">Role</label>
+            <select id="project-role" name="role" defaultValue="Architect">
+              <option value="Architect">Architect</option>
+              <option value="Engineer">Engineer</option>
+              <option value="Developer">Developer</option>
+            </select>
           </div>
           <div className="form-field-container">
-            <bim-label icon="material-symbols:info" style={{ marginBottom: 5 }}>
-              Status
-            </bim-label>
-            <bim-dropdown name="status">
-              <bim-option label="Pending" checked></bim-option>
-              <bim-option label="Active"></bim-option>
-              <bim-option label="Finished"></bim-option>
-            </bim-dropdown>
+            <label htmlFor="project-status">Status</label>
+            <select id="project-status" name="status" defaultValue="Pending">
+              <option value="Pending">Pending</option>
+              <option value="Active">Active</option>
+              <option value="Finished">Finished</option>
+            </select>
           </div>
           <div className="form-field-container">
-            <bim-label icon="material-symbols:info" style={{ marginBottom: 5 }}>
-              Finish Date
-            </bim-label>
-            <bim-text-input
-              id="finishDate"
-              type="date"
-              name="finishDate"
-            ></bim-text-input>
+            <label htmlFor="finishDate">Finish Date</label>
+            <input id="finishDate" type="date" name="finishDate" />
           </div>
         </div>
         <div className="botton-buttons">
@@ -136,11 +119,13 @@ export function ProjectsForm(props: Props) {
               justifyContent: 'flex-end',
             }}
           >
-            <bim-button
+            <button
               id="close-modal-btn"
               type="button"
-              label="Cancel"
-            ></bim-button>
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
             <button
               id="submit-project-btn"
               type="submit"
@@ -154,7 +139,6 @@ export function ProjectsForm(props: Props) {
                 color: 'white',
                 padding: '10px',
                 cursor: 'pointer',
-                transition: 'background-color 0.3s ease',
               }}
             >
               Submit

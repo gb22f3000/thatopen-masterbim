@@ -7,6 +7,7 @@ import { saveProjectsToStorage } from '../storage/projectsStore'
 import * as OBC from '@thatopen/components'
 import * as BUI from '@thatopen/ui'
 import { todoTool, TodoData, TodoCreator } from '../bim-components/TodoCreator'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   projectsManager: ProjectsManager
@@ -14,27 +15,35 @@ interface Props {
 
 export function ProjectDetailsPage(props: Props) {
   const routeParams = Router.useParams<{ id: string }>()
+  const { session, isAdmin } = useAuth()
 
   if (!routeParams.id) {
-    return <p>Project not found</p>
+    return <p className="empty-state">Project not found</p>
   }
 
   const project = props.projectsManager.getProject(routeParams.id)
 
   if (!project) {
-    return <p>The Project ID {routeParams.id} wasn't found.</p>
+    return (
+      <p className="empty-state">
+        The Project ID {routeParams.id} wasn&apos;t found.
+      </p>
+    )
   }
+
+  const canDelete =
+    isAdmin || !project.ownerId || project.ownerId === session?.userId
 
   const components = new OBC.Components()
   const dashboard = React.useRef<HTMLDivElement>(null)
   const todoContainer = React.useRef<HTMLDivElement>(null)
 
   const navigateTo = Router.useNavigate()
-  const originalDelete = props.projectsManager.deleteProject.bind(
-    props.projectsManager
-  )
-  props.projectsManager.deleteProject = (id) => {
-    originalDelete(id)
+
+  const onDelete = () => {
+    if (!canDelete) return
+    if (!window.confirm(`Delete project “${project.name}”?`)) return
+    props.projectsManager.deleteProject(project.id)
     saveProjectsToStorage(props.projectsManager.list)
     navigateTo('/')
   }
@@ -135,28 +144,21 @@ export function ProjectDetailsPage(props: Props) {
   return (
     <div id="project-details" className="page">
       <ProjectsForm projectsManager={props.projectsManager} />
-      <header>
+      <header className="page-header">
         <div>
-          <bim-label
-            style={{ fontSize: 'var(--font-xl)', ['--bim-label--c' as any]: 'var(--text-primary)' } as React.CSSProperties}
-            data-project-info="name"
-          >
+          <h1 className="page-title" data-project-info="name">
             {project.name}
-          </bim-label>
-          <bim-label
-            data-project-info="description"
-            style={{ fontSize: '15px', ['--bim-label--c' as any]: 'var(--text-muted)' } as React.CSSProperties}
-          >
+          </h1>
+          <p className="page-subtitle" data-project-info="description">
             {project.description}
-          </bim-label>
+          </p>
         </div>
-        <div>
-          <bim-button
-            label="Delete"
-            icon="material-symbols:delete"
-            onClick={() => props.projectsManager.deleteProject(project.id)}
-            style={{ backgroundColor: 'red' }}
-          ></bim-button>
+        <div className="page-actions">
+          {canDelete ? (
+            <button type="button" className="btn-danger" onClick={onDelete}>
+              Delete
+            </button>
+          ) : null}
         </div>
       </header>
       <div className="main-page-content">
@@ -178,9 +180,18 @@ export function ProjectDetailsPage(props: Props) {
                   aspectRatio: 1,
                   borderRadius: '100%',
                   padding: 12,
+                  color: '#fff',
+                  fontWeight: 700,
+                  minWidth: 48,
+                  textAlign: 'center',
                 }}
               >
-                HC
+                {project.name
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((p) => p[0]?.toUpperCase() ?? '')
+                  .join('') || 'P'}
               </p>
               <div>
                 <bim-button
@@ -193,15 +204,15 @@ export function ProjectDetailsPage(props: Props) {
             </div>
             <div style={{ padding: '0 30px' }}>
               <div>
-                <bim-label
-                  style={{ fontSize: 'var(--font-xl)', ['--bim-label--c' as any]: 'var(--text-primary)' } as React.CSSProperties}
-                  data-project-info="cardName"
-                >
+                <p className="card-title" data-project-info="cardName">
                   {project.name}
-                </bim-label>
-                <bim-label data-project-info="cardDescription">
+                </p>
+                <p
+                  className="card-subtitle"
+                  data-project-info="cardDescription"
+                >
                   {project.description}
-                </bim-label>
+                </p>
               </div>
               <div
                 style={{
@@ -212,48 +223,20 @@ export function ProjectDetailsPage(props: Props) {
                 }}
               >
                 <div>
-                  <bim-label
-                    className="muted"
-                    style={{ fontSize: 'var(--font-sm)' }}
-                  >
-                    Status
-                  </bim-label>
-                  <bim-label>
-                    {project.status}
-                  </bim-label>
+                  <p className="meta-label">Status</p>
+                  <p className="meta-value">{project.status}</p>
                 </div>
                 <div>
-                  <bim-label
-                    className="muted"
-                    style={{ fontSize: 'var(--font-sm)' }}
-                  >
-                    Cost
-                  </bim-label>
-                  <bim-label>
-                    ${project.cost}
-                  </bim-label>
+                  <p className="meta-label">Cost</p>
+                  <p className="meta-value">${project.cost}</p>
                 </div>
                 <div>
-                  <bim-label
-                    className="muted"
-                    style={{ fontSize: 'var(--font-sm)' }}
-                  >
-                    Role
-                  </bim-label>
-                  <bim-label>
-                    {project.role}
-                  </bim-label>
+                  <p className="meta-label">Role</p>
+                  <p className="meta-value">{project.role}</p>
                 </div>
                 <div>
-                  <bim-label
-                    className="muted"
-                    style={{ fontSize: 'var(--font-sm)' }}
-                  >
-                    Finish Date
-                  </bim-label>
-                  <bim-label>
-                    {project.finishDate.toDateString()}
-                  </bim-label>
+                  <p className="meta-label">Finish Date</p>
+                  <p className="meta-value">{project.finishDate.toDateString()}</p>
                 </div>
               </div>
               <div
@@ -269,9 +252,12 @@ export function ProjectDetailsPage(props: Props) {
                     backgroundColor: 'green',
                     padding: '4px 0',
                     textAlign: 'center',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 600,
                   }}
                 >
-                  {project.progress * 100}%
+                  {Math.round(project.progress * 100)}%
                 </div>
               </div>
             </div>
@@ -289,9 +275,9 @@ export function ProjectDetailsPage(props: Props) {
                 justifyContent: 'space-between',
               }}
             >
-              <bim-label style={{ fontSize: 'var(--font-lg)' }}>
+              <h2 className="page-title" style={{ fontSize: 'var(--font-lg)' }}>
                 To-Do
-              </bim-label>
+              </h2>
               <div
                 style={{
                   display: 'flex',

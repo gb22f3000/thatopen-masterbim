@@ -12,6 +12,7 @@ function serializeProject(project: Project) {
     finishDate: project.finishDate.toISOString(),
     cost: project.cost,
     progress: project.progress,
+    ownerId: project.ownerId,
   }
 }
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import * as OBC from '@thatopen/components'
 import * as OBCF from '@thatopen/components-front'
@@ -13,6 +13,11 @@ import {
   convertIfcToFrag,
   downloadFragFile,
 } from '../bim-components/IfcConverter'
+import { useTheme } from '../theme/ThemeContext'
+import {
+  VIEWER_BACKGROUNDS,
+  ViewerBgId,
+} from '../theme/themeStore'
 
 interface Props {
   components: OBC.Components
@@ -23,6 +28,30 @@ const DEMO_FRAG_URL =
 
 export function IFCViewer(props: Props) {
   const components = props.components
+  const { viewerBg, setViewerBg } = useTheme()
+  const viewerBgRef = useRef(viewerBg)
+  viewerBgRef.current = viewerBg
+  const worldRef = useRef<OBC.SimpleWorld<
+    OBC.SimpleScene,
+    OBC.OrthoPerspectiveCamera,
+    OBCF.PostproductionRenderer
+  > | null>(null)
+  const containerRef = useRef<HTMLElement | null>(null)
+
+  const applyViewerBackground = (id: ViewerBgId) => {
+    const cfg = VIEWER_BACKGROUNDS[id]
+    if (containerRef.current) {
+      containerRef.current.style.backgroundColor = cfg.css
+    }
+    const scene = worldRef.current?.scene?.three
+    if (scene) {
+      scene.background = new THREE.Color(cfg.hex)
+    }
+  }
+
+  useEffect(() => {
+    applyViewerBackground(viewerBg)
+  }, [viewerBg])
 
   useEffect(() => {
     let disposed = false
@@ -42,8 +71,10 @@ export function IFCViewer(props: Props) {
       ) as HTMLElement | null
       if (!viewerContainer || disposed) return
 
-      viewerContainer.style.backgroundColor = '#26282B'
-      viewerContainer.style.borderRadius = '8px'
+      containerRef.current = viewerContainer
+      const initialBg = VIEWER_BACKGROUNDS[viewerBgRef.current]
+      viewerContainer.style.backgroundColor = initialBg.css
+      viewerContainer.style.borderRadius = '12px'
       viewerContainer.style.overflow = 'hidden'
 
       const worlds = components.get(OBC.Worlds)
@@ -52,10 +83,11 @@ export function IFCViewer(props: Props) {
         OBC.OrthoPerspectiveCamera,
         OBCF.PostproductionRenderer
       >()
+      worldRef.current = world
 
       world.scene = new OBC.SimpleScene(components)
       world.scene.setup()
-      world.scene.three.background = new THREE.Color(0x202124)
+      world.scene.three.background = new THREE.Color(initialBg.hex)
 
       world.renderer = new OBCF.PostproductionRenderer(
         components,
@@ -765,6 +797,41 @@ export function IFCViewer(props: Props) {
               ></bim-button>
             </bim-toolbar-section>
 
+            <bim-toolbar-section label="View BG">
+              <bim-button
+                tooltip-title="Dark background"
+                icon="mdi:weather-night"
+                @click=${() => {
+                  setViewerBg('dark')
+                  applyViewerBackground('dark')
+                }}
+              ></bim-button>
+              <bim-button
+                tooltip-title="Sky blue background"
+                icon="mdi:weather-partly-cloudy"
+                @click=${() => {
+                  setViewerBg('sky')
+                  applyViewerBackground('sky')
+                }}
+              ></bim-button>
+              <bim-button
+                tooltip-title="Mist background"
+                icon="mdi:cloud"
+                @click=${() => {
+                  setViewerBg('mist')
+                  applyViewerBackground('mist')
+                }}
+              ></bim-button>
+              <bim-button
+                tooltip-title="White background"
+                icon="mdi:white-balance-sunny"
+                @click=${() => {
+                  setViewerBg('white')
+                  applyViewerBackground('white')
+                }}
+              ></bim-button>
+            </bim-toolbar-section>
+
             <bim-toolbar-section label="Selection">
               <bim-button
                 data-tool="tool-select"
@@ -917,6 +984,8 @@ export function IFCViewer(props: Props) {
       for (const fn of cleanupFns) fn()
       resizeObserver?.disconnect()
       floatingGrid?.remove()
+      worldRef.current = null
+      containerRef.current = null
       try {
         components.dispose()
       } catch {

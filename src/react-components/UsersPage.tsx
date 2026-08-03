@@ -1,278 +1,89 @@
 import * as React from 'react'
-import * as BUI from '@thatopen/ui'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { listUsersPublic } from '../auth/authStore'
+import { useAuth } from '../auth/AuthContext'
+
+type PublicUser = ReturnType<typeof listUsersPublic>[number]
 
 export function UsersPage() {
-  const usersTable = BUI.Component.create<BUI.Table>(() => {
-    const onTableCreated = (element?: Element) => {
-      const table = element as BUI.Table
-
-      table.data = [
-        {
-          data: {
-            Name: 'Fernando Pimenta',
-            Task: 'Create a new project',
-            Role: 'Engineer',
-          },
-        },
-        {
-          data: {
-            Name: 'Lorena Carvalho',
-            Task: 'Manage project',
-            Role: 'Engineer',
-          },
-        },
-        {
-          data: {
-            Name: 'Paulo Cesar',
-            Task: 'Develop a new feature',
-            Role: 'Developer',
-          },
-        },
-      ]
-    }
-
-    return BUI.html`
-      <bim-table ${BUI.ref(onTableCreated)}></bim-table>
-    `
-  })
-
-  const content = BUI.Component.create<BUI.Panel>(() => {
-    return BUI.html`
-    <bim-panel style="border-radius: 0px">
-      <bim-panel-section>
-        ${usersTable}
-      </bim-panel-section>
-    </bim-panel>
-    `
-  })
-
-  const sidebar = BUI.Component.create<BUI.Component>(() => {
-    const buttonStyle = {
-      height: '50px',
-    }
-
-    return BUI.html`
-      <div style="padding: 4px">
-      <bim-button 
-        style=${BUI.styleMap(buttonStyle)}
-        icon="material-symbols:print-sharp"
-        @click=${() => {
-          console.log(usersTable.value)
-        }}
-        ></bim-button>
-
-      <bim-button 
-        style=${BUI.styleMap(buttonStyle)}
-        icon="mdi:file"
-        @click=${() => {
-          const csvData = usersTable.csv
-          const blob = new Blob([csvData], { type: 'text/csv' })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'users.csv'
-          a.click()
-        }}
-        ></bim-button>
-      </div>
-    `
-  })
-
-  const footer = BUI.Component.create<BUI.Component>(() => {
-    return BUI.html`
-      <div style="display: flex; justify-content: center;">
-        <bim-label>
-        Copyright of Construction Company
-        </bim-label>
-      </div>
-    `
-  })
-
-  const gridLayout: BUI.Layouts = {
-    primary: {
-      template: `
-      "header header" 40px
-      "content sidebar" 1fr
-      "footer footer" 40px
-      / 1fr 60px
-      `,
-      elements: {
-        header: (() => {
-          const inputBox = BUI.Component.create<BUI.TextInput>(() => {
-            return BUI.html`
-              <bim-text-input
-                placeholder="🔍 Search user by name"
-                style="padding: 8px"
-              ></bim-text-input>
-            `
-          })
-          inputBox.addEventListener('input', (e) => {
-            usersTable.queryString = inputBox.value
-          })
-          return inputBox
-        })(),
-        content,
-        sidebar,
-        footer,
-      },
-    },
-  }
+  const { isAdmin } = useAuth()
+  const [users, setUsers] = useState<PublicUser[]>([])
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
-    const grid = document.getElementById('bimGrid') as BUI.Grid
-    grid.layouts = gridLayout
-    grid.layout = 'primary'
+    setUsers(listUsersPublic())
   }, [])
 
+  if (!isAdmin) {
+    return (
+      <div className="page">
+        <p className="empty-state">Administrators only.</p>
+      </div>
+    )
+  }
+
+  const filtered = users.filter((u) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return (
+      u.username.toLowerCase().includes(q) ||
+      u.displayName.toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q)
+    )
+  })
+
   return (
-    <div>
-      <bim-grid id="bimGrid"></bim-grid>
+    <div id="users-page" className="page">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Users</h1>
+          <p className="page-subtitle">
+            Local accounts for Admin and User roles (demo credentials)
+          </p>
+        </div>
+        <input
+          className="search-native"
+          placeholder="Search users"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </header>
+
+      <div className="users-table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Display name</th>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Access</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((u) => (
+              <tr key={u.id}>
+                <td>{u.displayName}</td>
+                <td>
+                  <code>{u.username}</code>
+                </td>
+                <td>
+                  <span className={`role-pill role-${u.role}`}>{u.role}</span>
+                </td>
+                <td>
+                  {u.role === 'admin'
+                    ? 'All projects · Users page'
+                    : 'Own projects · BIM tools'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="hint-block">
+          Demo passwords: <code>admin123</code>, <code>user123</code>,{' '}
+          <code>eng123</code>. Replace with a real identity provider before
+          production hardening.
+        </p>
+      </div>
     </div>
   )
-
-  //   <div id="users-page" className="page">
-  //     <header>
-  //       <h2>Users</h2>
-  //       <div
-  //         style={{
-  //           display: "flex",
-  //           alignItems: "center",
-  //           justifyContent: "end",
-  //           columnGap: 20,
-  //         }}
-  //       >
-  //         <div style={{ display: "flex", alignItems: "center", columnGap: 10 }}>
-  //           <input
-  //             type="text"
-  //             placeholder="🔍 Search user by name"
-  //             style={{ width: "100%" }}
-  //           />
-  //         </div>
-  //       </div>
-  //       <div>
-  //         <button>
-  //           <span className="material-symbols-rounded"> add </span>Add user
-  //         </button>
-  //       </div>
-  //     </header>
-  //     <div className="main-page-content">
-  //       <div style={{ display: "flex", flexDirection: "column", rowGap: 30 }}>
-  //         <div className="profile">
-  //           <div style={{ display: "flex", flexDirection: "column" }}>
-  //             <div
-  //               style={{
-  //                 display: "flex",
-  //                 flexDirection: "row",
-  //                 paddingBottom: 5,
-  //               }}
-  //             >
-  //               <img
-  //                 src="https://www.gravatar.com/avatar/d8165a2bef7d658eb11abb04ee8d5e70?s=200&d=identicon"
-  //                 alt="Profile Picture"
-  //                 className="profile-picture"
-  //               />
-  //               <div className="profile-info">
-  //                 <span className="profile-name">Fernando Pimenta</span>
-  //                 <span className="badge">Owner</span>
-  //               </div>
-  //             </div>
-  //             <div className="profile-project">
-  //               <div style={{ display: "flex", flexDirection: "row" }}>
-  //                 <h5>Project:</h5>
-  //                 <p style={{ marginLeft: 5, color: "#969696" }}>
-  //                   Community Hospital
-  //                 </p>
-  //               </div>
-  //               <div style={{ display: "flex", flexDirection: "row" }}>
-  //                 <h5>Role:</h5>
-  //                 <p style={{ marginLeft: 5, color: "#969696" }}>Engineer</p>
-  //               </div>
-  //             </div>
-  //           </div>
-  //           <div>
-  //             <button className="btn-secondary">
-  //               <span className="material-symbols-rounded"> edit </span>Edit
-  //             </button>
-  //           </div>
-  //         </div>
-  //         <div className="profile">
-  //           <div style={{ display: "flex", flexDirection: "column" }}>
-  //             <div
-  //               style={{
-  //                 display: "flex",
-  //                 flexDirection: "row",
-  //                 paddingBottom: 5,
-  //               }}
-  //             >
-  //               <img
-  //                 src="https://www.gravatar.com/avatar/d8165a2bef7d658eb11abb04ee8d5e70?s=200&d=identicon"
-  //                 alt="Profile Picture"
-  //                 className="profile-picture"
-  //               />
-  //               <div className="profile-info">
-  //                 <span className="profile-name">Fernando Pimenta</span>
-  //                 <span className="badge">Owner</span>
-  //               </div>
-  //             </div>
-  //             <div className="profile-project">
-  //               <div style={{ display: "flex", flexDirection: "row" }}>
-  //                 <h5>Project:</h5>
-  //                 <p style={{ marginLeft: 5, color: "#969696" }}>
-  //                   Community Hospital
-  //                 </p>
-  //               </div>
-  //               <div style={{ display: "flex", flexDirection: "row" }}>
-  //                 <h5>Role:</h5>
-  //                 <p style={{ marginLeft: 5, color: "#969696" }}>Engineer</p>
-  //               </div>
-  //             </div>
-  //           </div>
-  //           <div>
-  //             <button className="btn-secondary">
-  //               <span className="material-symbols-rounded"> edit </span>Edit
-  //             </button>
-  //           </div>
-  //         </div>
-  //         <div className="profile">
-  //           <div style={{ display: "flex", flexDirection: "column" }}>
-  //             <div
-  //               style={{
-  //                 display: "flex",
-  //                 flexDirection: "row",
-  //                 paddingBottom: 5,
-  //               }}
-  //             >
-  //               <img
-  //                 src="https://www.gravatar.com/avatar/d8165a2bef7d658eb11abb04ee8d5e70?s=200&d=identicon"
-  //                 alt="Profile Picture"
-  //                 className="profile-picture"
-  //               />
-  //               <div className="profile-info">
-  //                 <span className="profile-name">Fernando Pimenta</span>
-  //                 <span className="badge">Owner</span>
-  //               </div>
-  //             </div>
-  //             <div className="profile-project">
-  //               <div style={{ display: "flex", flexDirection: "row" }}>
-  //                 <h5>Project:</h5>
-  //                 <p style={{ marginLeft: 5, color: "#969696" }}>
-  //                   Community Hospital
-  //                 </p>
-  //               </div>
-  //               <div style={{ display: "flex", flexDirection: "row" }}>
-  //                 <h5>Role:</h5>
-  //                 <p style={{ marginLeft: 5, color: "#969696" }}>Engineer</p>
-  //               </div>
-  //             </div>
-  //           </div>
-  //           <div>
-  //             <button className="btn-secondary">
-  //               <span className="material-symbols-rounded"> edit </span>Edit
-  //             </button>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   </div>
 }

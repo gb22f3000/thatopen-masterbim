@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import * as Router from 'react-router-dom'
 
 import { Project } from '../class/Project'
@@ -8,16 +8,18 @@ import { ProjectCard } from './ProjectCard'
 import { SearchBox } from './SearchBox'
 import { ProjectsForm } from './ProjectsForm'
 import { saveProjectsToStorage } from '../storage/projectsStore'
-import * as BUI from '@thatopen/ui'
+import { useAuth } from '../auth/AuthContext'
 
 interface Props {
   projectsManager: ProjectsManager
 }
 
 export function ProjectsPage(props: Props) {
+  const { session, isAdmin } = useAuth()
   const [projects, setProjects] = useState<Project[]>([
     ...props.projectsManager.list,
   ])
+  const [query, setQuery] = useState('')
 
   const refresh = () => {
     setProjects([...props.projectsManager.list])
@@ -32,13 +34,19 @@ export function ProjectsPage(props: Props) {
     setProjects([...props.projectsManager.list])
   }, [])
 
-  const projectCards = projects.map((project) => {
-    return (
-      <Router.Link to={`/project/${project.id}`} key={project.id}>
-        <ProjectCard project={project} />
-      </Router.Link>
-    )
-  })
+  const visible = useMemo(() => {
+    let list = projects
+    if (!isAdmin && session) {
+      list = list.filter(
+        (p) => !p.ownerId || p.ownerId === session.userId
+      )
+    }
+    if (query.trim()) {
+      const q = query.trim().toLowerCase()
+      list = list.filter((p) => p.name.toLowerCase().includes(q))
+    }
+    return list
+  }, [projects, isAdmin, session, query])
 
   const onNewProjectClick = () => {
     const modal = document.getElementById('new-project-modal')
@@ -46,86 +54,66 @@ export function ProjectsPage(props: Props) {
     modal.showModal()
   }
 
-  const onImportProject = () => {
-    props.projectsManager.importFromJSON()
-    refresh()
-  }
-
-  const onExportProject = () => {
-    props.projectsManager.exportToJSON()
-  }
-
-  const onProjectSearch = (value: string) => {
-    setProjects(props.projectsManager.filterProjects(value))
-  }
-
-  const importButton = BUI.Component.create<BUI.Button>(() => {
-    return BUI.html`
-      <bim-button
-        id="import-projects-btn"
-        icon="iconoir:import"
-        @click=${onImportProject}
-      ></bim-button>
-    `
-  })
-
-  const exportButton = BUI.Component.create<BUI.Button>(() => {
-    return BUI.html`
-      <bim-button
-        id="export-projects-btn"
-        icon="ph:export"
-        @click=${onExportProject}
-      ></bim-button>
-    `
-  })
-
-  const newProjectButton = BUI.Component.create<BUI.Button>(() => {
-    return BUI.html`
-      <bim-button
-        id="new-project-btn"
-        label="New project"
-        icon="fluent:add-20-regular"
-        @click=${onNewProjectClick}
-      ></bim-button>
-    `
-  })
-
   useEffect(() => {
-    const projectControls = document.getElementById('project-page-controls')
-    projectControls?.appendChild(importButton)
-    projectControls?.appendChild(exportButton)
-    projectControls?.appendChild(newProjectButton)
-
     const cancelButton = document.getElementById('close-modal-btn')
     const onCancel = () => {
       const modal = document.getElementById('new-project-modal')
       if (modal instanceof HTMLDialogElement) modal.close()
     }
     cancelButton?.addEventListener('click', onCancel)
-
-    return () => {
-      importButton.remove()
-      exportButton.remove()
-      newProjectButton.remove()
-      cancelButton?.removeEventListener('click', onCancel)
-    }
+    return () => cancelButton?.removeEventListener('click', onCancel)
   }, [])
 
   return (
-    <div id="projects-page" className="page" style={{ display: 'block' }}>
+    <div id="projects-page" className="page">
       <ProjectsForm projectsManager={props.projectsManager} />
-      <header>
-        <bim-label>Projects</bim-label>
-        <SearchBox onChange={(value) => onProjectSearch(value)} />
-        <div
-          id="project-page-controls"
-          style={{ display: 'flex', alignItems: 'center', columnGap: 15 }}
-        ></div>
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Projects</h1>
+          <p className="page-subtitle">
+            {isAdmin
+              ? 'Administrator view — all workspaces'
+              : 'Your workspaces and shared demos'}
+          </p>
+        </div>
+        <SearchBox onChange={setQuery} />
+        <div className="page-actions">
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => {
+                  props.projectsManager.importFromJSON()
+                  refresh()
+                }}
+              >
+                Import
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => props.projectsManager.exportToJSON()}
+              >
+                Export
+              </button>
+            </>
+          ) : null}
+          <button type="button" className="btn-primary" onClick={onNewProjectClick}>
+            New project
+          </button>
+        </div>
       </header>
-      {projects.length > 0 ? (
-        <div id="projects-list">{projectCards}</div>
+      {visible.length > 0 ? (
+        <div id="projects-list">
+          {visible.map((project) => (
+            <Router.Link to={`/project/${project.id}`} key={project.id}>
+              <ProjectCard project={project} />
+            </Router.Link>
+          ))}
+        </div>
       ) : (
-        <p>There are no projects to display</p>
+        <p className="empty-state">No projects match this view.</p>
       )}
     </div>
   )

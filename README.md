@@ -1,60 +1,39 @@
 # That Open Master BIM
 
-A powerful browser-based BIM application built with [That Open Engine](https://docs.thatopen.com/).
+Browser BIM app with **Admin / User login**, themed UI, and [That Open Engine](https://docs.thatopen.com/) 3.4.
 
-<div align="center">
-  <img width="600" src="assets/01.png" alt="Master BIM Software Developer Interface">
-  <br>
-  <img width="600" src="assets/02.png" alt="Master BIM Software Developer Interface">
-</div>
-
-<div align="center">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
-  <img alt="React" src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB">
-  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-black?style=for-the-badge&logo=three.js&logoColor=white">
-  <img alt="That Open" src="https://img.shields.io/badge/That%20Open-3.4-6528d7?style=for-the-badge">
-</div>
-
-## Features
-
-- Project dashboard with local persistence
-- IFC → Fragments conversion and fast `.frag` loading
-- Element selection, properties, isolation, and visibility tools
-- Length / area measurement and clipping planes
-- Spatial / category classification
-- Quantity take-off for the current selection
-- Visual to-dos with camera bookmarks and 3D markers
-
-## Documentation
-
-- [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) — end-to-end usage
-- [docs/MEASUREMENTS.md](./docs/MEASUREMENTS.md) — Length / Area tools
-- [docs/IFC_CONVERTER.md](./docs/IFC_CONVERTER.md) — local IFC → `.frag`
-- [FUNCTIONALITY.md](./FUNCTIONALITY.md) — feature reference
-- [CODING_STRUCTURE.md](./CODING_STRUCTURE.md) — architecture and code map
-- [APP_EXPLANATION.md](./APP_EXPLANATION.md) — earlier architectural notes
-
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) 18+
-- [Yarn](https://yarnpkg.com/)
-
-## Install & run
+## Quick start
 
 ```shell
 yarn
 yarn dev
 ```
 
-Then open [http://127.0.0.1:5173/](http://127.0.0.1:5173/).
+Open http://127.0.0.1:5173/ → **/login**
 
-Tip: open a demo project and click **Demo Model** in the viewer toolbar to load a sample Fragments building immediately.
+| Role | Username | Password |
+| --- | --- | --- |
+| Admin | `admin` | `admin123` |
+| User | `user` | `user123` |
+
+## Features
+
+- Separate Admin and User authentication (session-ready for web deploy)
+- Projects with local persistence
+- IFC → Fragments conversion and fast `.frag` loading
+- Length / area measure, clipping, QTO, to-dos
+- Workspace themes: Dark / Sky / Light
+- Viewer backgrounds: Dark / Sky blue / Mist / White
+
+## Documentation
+
+**Start:** [docs/README.md](./docs/README.md)
+
+Includes architecture, auth code, viewer tools, UI themes, and full code walkthrough.
 
 ## Stack
 
-- React + Vite + TypeScript
-- `@thatopen/components` / `@thatopen/components-front` / `@thatopen/fragments` / `@thatopen/ui` / `@thatopen/ui-obc`
-- Three.js + web-ifc
+React · Vite · TypeScript · Three.js · `@thatopen/components` 3.4 · web-ifc
 
 ## License
 

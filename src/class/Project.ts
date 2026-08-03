@@ -10,6 +10,8 @@ export interface IProject {
   status: ProjectStatus
   role: Role
   finishDate: Date
+  /** Owning auth user id — admins see all; users see own + shared demos */
+  ownerId?: string
 }
 
 export class Project implements IProject {
@@ -23,6 +25,7 @@ export class Project implements IProject {
   progress: number = 0.8
   id: string
   avatarColor: string = '#ffffff'
+  ownerId?: string
 
   constructor(data: IProject, id = uuidv4()) {
     // Assign each property from data to this instance

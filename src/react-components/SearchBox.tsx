@@ -1,17 +1,22 @@
 import * as React from 'react'
-import * as BUI from '@thatopen/ui'
+import { useEffect, useRef } from 'react'
 
 interface Props {
   onChange: (value: string) => void
 }
 
 export function SearchBox(props: Props) {
-  const searchInput = document.getElementById('search-input') as BUI.TextInput
-  if (searchInput) {
-    searchInput.addEventListener('input', () => {
-      props.onChange(searchInput.value)
-    })
-  }
+  const inputRef = useRef<any>(null)
+
+  useEffect(() => {
+    const el = inputRef.current as HTMLElement & { value?: string } | null
+    if (!el) return
+    const handler = () => {
+      props.onChange((el as any).value ?? '')
+    }
+    el.addEventListener('input', handler)
+    return () => el.removeEventListener('input', handler)
+  }, [props.onChange])
 
   return (
     <div
@@ -22,7 +27,12 @@ export function SearchBox(props: Props) {
         width: '40%',
       }}
     >
-      <bim-text-input id="search-input" placeholder="Search"></bim-text-input>
+      <bim-text-input
+        ref={inputRef}
+        id="search-input"
+        placeholder="Search projects"
+        style={{ width: '100%' }}
+      ></bim-text-input>
     </div>
   )
 }
