@@ -27,9 +27,9 @@ Open http://127.0.0.1:5173/ → **/login**
 
 ## Documentation
 
-**Start:** [docs/README.md](./docs/README.md)
+All project docs live in **[docs/](./docs/README.md)** (overview, install, auth, architecture, code walkthrough, etc.).
 
-Includes architecture, auth code, viewer tools, UI themes, and full code walkthrough.
+The root `README.md` is only the GitHub landing page — by convention it stays outside `docs/`.
 
 ## Stack
 

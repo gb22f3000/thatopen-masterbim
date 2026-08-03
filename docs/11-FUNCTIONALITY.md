@@ -1,6 +1,8 @@
 # App Functionality
 
-See the full package: [docs/README.md](./docs/README.md)
+Feature summary for That Open Master BIM.
+
+Full docs index: [README.md](./README.md)
 
 ## Auth
 
@@ -15,3 +17,9 @@ See the full package: [docs/README.md](./docs/README.md)
 - Measure, clip, QTO, todos, classifier
 - Viewer backgrounds: dark, sky blue, mist, white
 - Workspace themes: dark, sky, light
+
+## Related
+
+- [03-USER_GUIDE.md](./03-USER_GUIDE.md)
+- [05-AUTH_AND_ROLES.md](./05-AUTH_AND_ROLES.md)
+- [06-VIEWER_TOOLS.md](./06-VIEWER_TOOLS.md)

@@ -20,6 +20,11 @@ Browser BIM workspace with **Admin / User login**, themed UI, and That Open Engi
 | [08-CODE_WALKTHROUGH.md](./08-CODE_WALKTHROUGH.md) | File-by-file code explanation |
 | [09-DEVELOPMENT.md](./09-DEVELOPMENT.md) | Extending cleanly |
 | [10-TROUBLESHOOTING.md](./10-TROUBLESHOOTING.md) | Common issues |
+| [11-FUNCTIONALITY.md](./11-FUNCTIONALITY.md) | Feature summary |
+| [12-CODING_STRUCTURE.md](./12-CODING_STRUCTURE.md) | Source tree map |
+| [legacy/APP_EXPLANATION.md](./legacy/APP_EXPLANATION.md) | Older historical notes |
+
+> Only **`README.md`** stays at the repository root (GitHub landing page). All other docs live in this folder.
 
 ---
 

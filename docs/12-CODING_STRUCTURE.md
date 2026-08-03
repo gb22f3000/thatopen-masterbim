@@ -1,7 +1,7 @@
 # Coding Structure
 
-Full walkthrough: [docs/08-CODE_WALKTHROUGH.md](./docs/08-CODE_WALKTHROUGH.md)  
-Architecture: [docs/04-ARCHITECTURE.md](./docs/04-ARCHITECTURE.md)
+Full walkthrough: [08-CODE_WALKTHROUGH.md](./08-CODE_WALKTHROUGH.md)  
+Architecture: [04-ARCHITECTURE.md](./04-ARCHITECTURE.md)
 
 ```text
 src/

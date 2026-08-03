@@ -1,11 +1,13 @@
-# Architectural Explanation & Technical Documentation
+# Architectural Explanation (legacy)
 
-> Prefer the newer docs:
+> Historical overview from the earlier course docs.  
+> Prefer the current package:
 >
-> - [FUNCTIONALITY.md](./FUNCTIONALITY.md)
-> - [CODING_STRUCTURE.md](./CODING_STRUCTURE.md)
->
-> This file is kept as a historical overview and has been updated for Engine v3.
+> - [01-OVERVIEW.md](../01-OVERVIEW.md)
+> - [04-ARCHITECTURE.md](../04-ARCHITECTURE.md)
+> - [08-CODE_WALKTHROUGH.md](../08-CODE_WALKTHROUGH.md)
+> - [11-FUNCTIONALITY.md](../11-FUNCTIONALITY.md)
+> - [12-CODING_STRUCTURE.md](../12-CODING_STRUCTURE.md)
 
 ---
 
@@ -17,20 +19,20 @@ The application is a modern **Building Information Modeling (BIM)** platform. Us
 
 ```mermaid
 graph TD
-    A[index.tsx - Entry Point] --> B[BrowserRouter & Routes]
-    B --> C[ProjectsPage]
-    B --> D[ProjectDetailsPage]
-    B --> E[UsersPage]
+  A[index.tsx - Entry Point] --> B[BrowserRouter & Routes]
+  B --> C[ProjectsPage]
+  B --> D[ProjectDetailsPage]
+  B --> E[UsersPage]
 
-    C --> F[ProjectsManager - State Layer]
-    D --> F
-    F --> L[localStorage]
+  C --> F[ProjectsManager - State Layer]
+  D --> F
+  F --> L[localStorage]
 
-    D --> G[IFCViewer - 3D Engine]
-    G --> H[@thatopen/components v3 + Three.js]
-    G --> I[SimpleQTO - Quantity Take Off]
-    G --> J[TodoCreator - Visual Issues Tracker]
-    G --> K[Measure + Clipper + Classifier]
+  D --> G[IFCViewer - 3D Engine]
+  G --> H[@thatopen/components v3 + Three.js]
+  G --> I[SimpleQTO - Quantity Take Off]
+  G --> J[TodoCreator - Visual Issues Tracker]
+  G --> K[Measure + Clipper + Classifier]
 ```
 
 ---
@@ -44,6 +46,7 @@ graph TD
 5. **@thatopen/fragments 3.4** — worker-based Fragments format
 6. **@thatopen/ui & @thatopen/ui-obc** — BIM web-component UI
 7. **localStorage** — default persistence (Firebase optional)
+8. **Auth + Theme modules** — Admin/User login and workspace/viewer themes
 
 ---
 
@@ -51,11 +54,14 @@ graph TD
 
 ### `src/`
 
-- **[index.tsx](./src/index.tsx)** — `BUI.Manager.init()`, routing, project seeding
-- **[storage/projectsStore.ts](./src/storage/projectsStore.ts)** — local project persistence
-- **[react-components/IFCViewer.tsx](./src/react-components/IFCViewer.tsx)** — full That Open v3 viewer
-- **[bim-components/TodoCreator](./src/bim-components/TodoCreator)** — selection-linked issues
-- **[bim-components/SimpleQTO](./src/bim-components/SimpleQTO)** — quantity aggregation
+- `index.tsx` — providers, routing, project seeding
+- `auth/` — Admin/User session
+- `theme/` — workspace + viewer backgrounds
+- `storage/projectsStore.ts` — local project persistence
+- `react-components/IFCViewer.tsx` — That Open v3 viewer
+- `bim-components/TodoCreator` — selection-linked issues
+- `bim-components/SimpleQTO` — quantity aggregation
+- `bim-components/IfcConverter` — IFC → `.frag`
 
 ---
 
@@ -78,6 +84,7 @@ graph TD
 1. Enable Length / Area / Clip mode.
 2. Double-click in the viewport.
 3. Press Delete / Backspace to remove the active item.
+4. For Area, press Enter to close the polygon.
 
 ### To-dos
 
@@ -93,3 +100,4 @@ graph TD
 - BCF import / export via `BCFTopics`
 - Multi-model federation (architecture + structure + MEP)
 - ClipStyler for drawing-quality section fills
+- Replace local demo auth with Firebase Auth / OIDC
