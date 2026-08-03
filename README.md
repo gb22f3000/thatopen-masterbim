@@ -27,7 +27,10 @@ A powerful browser-based BIM application built with [That Open Engine](https://d
 
 ## Documentation
 
-- [FUNCTIONALITY.md](./FUNCTIONALITY.md) — what the app does and how to use it
+- [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) — end-to-end usage
+- [docs/MEASUREMENTS.md](./docs/MEASUREMENTS.md) — Length / Area tools
+- [docs/IFC_CONVERTER.md](./docs/IFC_CONVERTER.md) — local IFC → `.frag`
+- [FUNCTIONALITY.md](./FUNCTIONALITY.md) — feature reference
 - [CODING_STRUCTURE.md](./CODING_STRUCTURE.md) — architecture and code map
 - [APP_EXPLANATION.md](./APP_EXPLANATION.md) — earlier architectural notes
 

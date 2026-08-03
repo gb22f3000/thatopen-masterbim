@@ -44,6 +44,7 @@ graph TD
   I --> N[LengthMeasurement / AreaMeasurement]
   H --> O[TodoCreator]
   H --> P[SimpleQTO]
+  H --> R[IfcConverter]
   H --> Q[@thatopen/ui-obc tables and buttons]
 ```
 
@@ -75,6 +76,11 @@ src/
   bim-components/
     TodoCreator/            # Custom OBC.Component for issues + markers
     SimpleQTO/              # Custom quantity aggregation component
+    IfcConverter/           # Local IFC → .frag convert + download helpers
+docs/
+  USER_GUIDE.md             # End-to-end usage
+  MEASUREMENTS.md           # Length / Area interaction guide
+  IFC_CONVERTER.md          # Converter pipeline and tips
 ```
 
 ---

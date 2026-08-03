@@ -9,6 +9,10 @@ import * as FRAGS from '@thatopen/fragments'
 import fragmentsWorkerUrl from '@thatopen/fragments/worker?url'
 import { TodoCreator } from '../bim-components/TodoCreator'
 import { SimpleQTO, qtoTool } from '../bim-components/SimpleQTO'
+import {
+  convertIfcToFrag,
+  downloadFragFile,
+} from '../bim-components/IfcConverter'
 
 interface Props {
   components: OBC.Components
@@ -179,14 +183,22 @@ export function IFCViewer(props: Props) {
       const lengthMeasurer = components.get(OBCF.LengthMeasurement)
       lengthMeasurer.world = world
       lengthMeasurer.color = new THREE.Color('#494cb6')
-      lengthMeasurer.enabled = false
+      lengthMeasurer.mode = 'free'
       lengthMeasurer.snappings = [
         FRAGS.SnappingClass.POINT,
         FRAGS.SnappingClass.LINE,
       ]
+      lengthMeasurer.enabled = false
 
       const areaMeasurer = components.get(OBCF.AreaMeasurement)
       areaMeasurer.world = world
+      areaMeasurer.color = new THREE.Color('#6528d7')
+      areaMeasurer.mode = 'free'
+      areaMeasurer.snappings = [
+        FRAGS.SnappingClass.POINT,
+        FRAGS.SnappingClass.LINE,
+        FRAGS.SnappingClass.FACE,
+      ]
       areaMeasurer.enabled = false
 
       const clipper = components.get(OBC.Clipper)
@@ -196,21 +208,136 @@ export function IFCViewer(props: Props) {
       todoCreator.world = world
       todoCreator.setup()
 
-      const setToolMode = (mode: 'select' | 'length' | 'area' | 'clip') => {
-        lengthMeasurer.enabled = mode === 'length'
-        areaMeasurer.enabled = mode === 'area'
-        clipper.enabled = mode === 'clip'
-        highlighter.enabled = mode === 'select'
+      type ToolMode = 'select' | 'length' | 'area' | 'clip'
+      let activeToolMode: ToolMode = 'select'
+
+      const measureHint = document.createElement('div')
+      measureHint.className = 'viewer-tool-hint'
+      measureHint.hidden = true
+      viewerContainer.appendChild(measureHint)
+      cleanupFns.push(() => measureHint.remove())
+
+      const toolHints: Record<ToolMode, string> = {
+        select: '',
+        length:
+          'Length: hover until snap marker appears → double-click start → double-click end. Delete removes hovered dimension. Esc cancels.',
+        area:
+          'Area: double-click 3+ boundary points → press Enter to close polygon. Esc cancels. Delete removes hovered area.',
+        clip:
+          'Clip: double-click a surface to place a section plane. Delete removes hovered clip.',
       }
 
-      const onDblClick = () => {
-        if (lengthMeasurer.enabled) lengthMeasurer.create()
+      const setMeasureHint = (mode: ToolMode) => {
+        const text = toolHints[mode]
+        if (!text) {
+          measureHint.hidden = true
+          measureHint.textContent = ''
+          return
+        }
+        measureHint.hidden = false
+        measureHint.textContent = text
+      }
+
+      const syncToolButtons = () => {
+        const map: Record<string, ToolMode> = {
+          'tool-select': 'select',
+          'tool-length': 'length',
+          'tool-area': 'area',
+          'tool-clip': 'clip',
+        }
+        for (const [id, mode] of Object.entries(map)) {
+          const btn = viewerContainer.querySelector(
+            `[data-tool="${id}"]`
+          ) as BUI.Button | null
+          if (btn) btn.active = activeToolMode === mode
+        }
+      }
+
+      const setToolMode = (mode: ToolMode) => {
+        // Always disable first so Measurement.cancelCreation runs cleanly
+        lengthMeasurer.enabled = false
+        areaMeasurer.enabled = false
+        clipper.enabled = false
+
+        activeToolMode = mode
+
+        if (mode === 'length') {
+          lengthMeasurer.mode = 'free'
+          lengthMeasurer.snappings = [
+            FRAGS.SnappingClass.POINT,
+            FRAGS.SnappingClass.LINE,
+          ]
+          lengthMeasurer.enabled = true
+          highlighter.enabled = false
+          void highlighter.clear('select')
+        } else if (mode === 'area') {
+          areaMeasurer.mode = 'free'
+          areaMeasurer.snappings = [
+            FRAGS.SnappingClass.POINT,
+            FRAGS.SnappingClass.LINE,
+            FRAGS.SnappingClass.FACE,
+          ]
+          areaMeasurer.enabled = true
+          highlighter.enabled = false
+          void highlighter.clear('select')
+        } else if (mode === 'clip') {
+          clipper.enabled = true
+          highlighter.enabled = false
+          void highlighter.clear('select')
+        } else {
+          highlighter.enabled = true
+        }
+
+        setMeasureHint(mode)
+        syncToolButtons()
+      }
+
+      const clearAllMeasurements = () => {
+        lengthMeasurer.list.clear()
+        areaMeasurer.list.clear()
+      }
+
+      const onDblClick = (event: MouseEvent) => {
+        // Ignore double-clicks that land on floating UI controls
+        const target = event.target as HTMLElement | null
+        if (
+          target?.closest?.(
+            'bim-toolbar, bim-panel, bim-button, bim-text-input, bim-table'
+          )
+        ) {
+          return
+        }
+        if (lengthMeasurer.enabled) void lengthMeasurer.create()
         else if (areaMeasurer.enabled) void areaMeasurer.create()
         else if (clipper.enabled) void clipper.create(world!)
       }
 
       const onKeyDown = (event: KeyboardEvent) => {
+        if (event.code === 'Enter' || event.code === 'NumpadEnter') {
+          if (areaMeasurer.enabled) {
+            event.preventDefault()
+            areaMeasurer.endCreation()
+          }
+          return
+        }
+
+        if (event.code === 'Escape') {
+          if (lengthMeasurer.enabled) lengthMeasurer.cancelCreation()
+          if (areaMeasurer.enabled) areaMeasurer.cancelCreation()
+          return
+        }
+
         if (event.code === 'Delete' || event.code === 'Backspace') {
+          // Don't steal Backspace while typing in inputs
+          const el = event.target as HTMLElement | null
+          if (
+            el &&
+            (el.tagName === 'INPUT' ||
+              el.tagName === 'TEXTAREA' ||
+              el.isContentEditable)
+          ) {
+            return
+          }
           if (lengthMeasurer.enabled) lengthMeasurer.delete()
           else if (areaMeasurer.enabled) areaMeasurer.delete()
           else if (clipper.enabled) void clipper.delete(world!)
@@ -262,6 +389,7 @@ export function IFCViewer(props: Props) {
       }
 
       let ifcLoadButton: BUI.Button | null = null
+      let ifcConvertButton: BUI.Button | null = null
 
       const onIfcImport = () => {
         const input = document.createElement('input')
@@ -274,57 +402,99 @@ export function IFCViewer(props: Props) {
           const started = performance.now()
           setLoadingButton(ifcLoadButton, true, 'Converting IFC…')
           try {
-            const buffer = new Uint8Array(await file.arrayBuffer())
-            const modelId = uniqueModelId(
-              file.name.replace(/\.ifc$/i, '') || `ifc-${Date.now()}`
-            )
-
-            // Keep wasm on local path (CUI's built-in button wrongly resets it to unpkg)
-            ifcLoader.settings.autoSetWasm = false
-            ifcLoader.settings.wasm = { path: wasmPath, absolute: true }
-
-            let lastPct = -1
-            const model = await ifcLoader.load(buffer, true, modelId, {
-              processData: {
-                progressCallback: (progress: number) => {
-                  const pct = Math.round((progress || 0) * 100)
-                  if (pct !== lastPct) {
-                    lastPct = pct
-                    setLoadingButton(
-                      ifcLoadButton,
-                      true,
-                      `IFC ${pct}%`
-                    )
-                  }
-                },
+            const result = await convertIfcToFrag({
+              components,
+              file,
+              wasmPath,
+              loadIntoViewer: true,
+              onProgress: ({ percent, message }) => {
+                setLoadingButton(
+                  ifcLoadButton,
+                  true,
+                  message || `IFC ${percent}%`
+                )
               },
             })
 
-            // onItemSet already adds the model to the scene
             await fragments.core.update(true)
             world!.renderer?.resize()
             world!.camera.updateAspect()
             await fitToModels()
 
-            const seconds = ((performance.now() - started) / 1000).toFixed(1)
+            const seconds = (
+              (performance.now() - started) /
+              1000
+            ).toFixed(1)
             setLoadingButton(ifcLoadButton, false, 'Load IFC')
 
-            // Offer saving .frag so next open is instant
             const saveFrag = window.confirm(
-              `IFC converted in ${seconds}s.\n\nSave a .frag file for fast reload next time?`
+              `IFC converted in ${seconds}s and loaded into the viewer.\n\nDownload a .frag file for fast reload next time?`
             )
             if (saveFrag) {
-              const fragsBuffer = await model.getBuffer(false)
-              const out = new File([fragsBuffer], `${model.modelId}.frag`)
-              const link = document.createElement('a')
-              link.href = URL.createObjectURL(out)
-              link.download = out.name
-              link.click()
-              URL.revokeObjectURL(link.href)
+              downloadFragFile(result.fragBuffer, result.fileName)
             }
           } catch (error) {
             setLoadingButton(ifcLoadButton, false, 'Load IFC')
             notifyError(`IFC import "${file.name}"`, error)
+          }
+        })
+        input.click()
+      }
+
+      const onIfcConvertOnly = () => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = '.ifc'
+        input.multiple = true
+        input.addEventListener('change', async () => {
+          const files = [...(input.files ?? [])]
+          if (files.length === 0) return
+
+          setLoadingButton(ifcConvertButton, true, 'Converting…')
+          const loadAfter = window.confirm(
+            `${files.length} IFC file(s) selected.\n\nOK = convert, download .frag, AND load into viewer\nCancel = convert & download only (no viewer load)`
+          )
+
+          let ok = 0
+          try {
+            for (let i = 0; i < files.length; i++) {
+              const file = files[i]
+              setLoadingButton(
+                ifcConvertButton,
+                true,
+                `File ${i + 1}/${files.length}`
+              )
+              const result = await convertIfcToFrag({
+                components,
+                file,
+                wasmPath,
+                loadIntoViewer: loadAfter,
+                onProgress: ({ percent, message }) => {
+                  setLoadingButton(
+                    ifcConvertButton,
+                    true,
+                    `${i + 1}/${files.length}: ${message || percent + '%'}`
+                  )
+                },
+              })
+              downloadFragFile(result.fragBuffer, result.fileName)
+              ok++
+            }
+
+            if (loadAfter) {
+              await fragments.core.update(true)
+              world!.renderer?.resize()
+              world!.camera.updateAspect()
+              await fitToModels()
+            }
+
+            window.alert(
+              `Converted ${ok}/${files.length} IFC file(s) to .frag.\nSaved downloads to your browser download folder.`
+            )
+          } catch (error) {
+            notifyError('IFC → .frag conversion', error)
+          } finally {
+            setLoadingButton(ifcConvertButton, false, 'Convert IFC')
           }
         })
         input.click()
@@ -517,9 +687,12 @@ export function IFCViewer(props: Props) {
           <bim-panel>
             <bim-panel-section name="tools" label="Tools Help" icon="mdi:help-circle" fixed>
               <bim-label>Select: click elements (Ctrl+click multi)</bim-label>
-              <bim-label>Length / Area: double-click to place</bim-label>
-              <bim-label>Clip: double-click a surface</bim-label>
-              <bim-label>Delete / Backspace: remove active tool item</bim-label>
+              <bim-label>Length: double-click start point, then double-click end point</bim-label>
+              <bim-label>Area: double-click 3+ polygon points, then press Enter</bim-label>
+              <bim-label>Esc: cancel in-progress measurement</bim-label>
+              <bim-label>Delete / Backspace: remove hovered measurement or clip</bim-label>
+              <bim-label>Convert IFC: local IFC → .frag (download / optional load)</bim-label>
+              <bim-label>Clip: double-click a surface to place a section plane</bim-label>
             </bim-panel-section>
           </bim-panel>
         `
@@ -546,6 +719,19 @@ export function IFCViewer(props: Props) {
           `
         })
 
+        ifcConvertButton = BUI.Component.create<BUI.Button>(() => {
+          return BUI.html`
+            <bim-button
+              tooltip-title="Convert IFC → .frag"
+              icon="mdi:file-swap-outline"
+              @click=${onIfcConvertOnly}
+            ></bim-button>
+          `
+        })
+
+        // Defer active-state sync until buttons exist in the DOM
+        queueMicrotask(() => syncToolButtons())
+
         return BUI.html`
           <bim-toolbar style="justify-self: center;">
             <bim-toolbar-section label="Models">
@@ -555,6 +741,7 @@ export function IFCViewer(props: Props) {
                 @click=${() => void loadDemoModel()}
               ></bim-button>
               ${ifcLoadButton}
+              ${ifcConvertButton}
               ${loadFragBtn}
               <bim-button
                 tooltip-title="Import .frag"
@@ -580,6 +767,7 @@ export function IFCViewer(props: Props) {
 
             <bim-toolbar-section label="Selection">
               <bim-button
+                data-tool="tool-select"
                 tooltip-title="Select Mode"
                 icon="mdi:cursor-default-click"
                 @click=${() => setToolMode('select')}
@@ -608,24 +796,27 @@ export function IFCViewer(props: Props) {
 
             <bim-toolbar-section label="Measure">
               <bim-button
+                data-tool="tool-length"
                 tooltip-title="Length"
                 icon="mdi:ruler"
                 @click=${() => setToolMode('length')}
               ></bim-button>
               <bim-button
+                data-tool="tool-area"
                 tooltip-title="Area"
                 icon="mdi:vector-square"
                 @click=${() => setToolMode('area')}
               ></bim-button>
               <bim-button
-                tooltip-title="Clear Length"
+                tooltip-title="Clear Measurements"
                 icon="mdi:ruler-square"
-                @click=${() => lengthMeasurer.list.clear()}
+                @click=${clearAllMeasurements}
               ></bim-button>
             </bim-toolbar-section>
 
             <bim-toolbar-section label="Section">
               <bim-button
+                data-tool="tool-clip"
                 tooltip-title="Clip Mode"
                 icon="mdi:content-cut"
                 @click=${() => setToolMode('clip')}

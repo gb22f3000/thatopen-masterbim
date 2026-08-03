@@ -74,12 +74,15 @@ Aligned with That Open tutorials for [Worlds](https://docs.thatopen.com/Tutorial
 | Tool | What it does |
 | --- | --- |
 | Demo Model | Loads the official That Open school architecture `.frag` sample |
-| Load IFC | Converts IFC → Fragments (WASM via `web-ifc`) then displays it |
+| Load IFC | Converts IFC → Fragments (local WASM) then displays it; offers `.frag` download |
+| Convert IFC → .frag | Dedicated local converter (multi-file); download `.frag`, optionally load |
 | Load Fragments | Built-in Fragments loader button |
 | Import `.frag` | File picker for local Fragments |
 | Export `.frag` | Downloads the first loaded model as Fragments |
 | Dispose | Removes all loaded models from memory |
 | Models List | Panel to show / download / dispose models |
+
+Detailed converter docs: [docs/IFC_CONVERTER.md](./docs/IFC_CONVERTER.md)
 
 ### Selection
 
@@ -97,10 +100,12 @@ Selecting elements opens the **Property Information** panel (`itemsData` table) 
 
 | Tool | What it does |
 | --- | --- |
-| Length | Double-click two points (snaps to points / lines) |
-| Area | Double-click to place area measurement points |
-| Clear Length | Removes length dimensions |
+| Length | Double-click start, then end (point / line snap). Esc cancels. |
+| Area | Double-click ≥ 3 polygon points, then **Enter** to close. Esc cancels. |
+| Clear Measurements | Removes all length **and** area dimensions |
 | Delete / Backspace | Deletes the measurement under the cursor |
+
+While measuring, selection highlighting is disabled. A hint bar explains the active tool. Full guide: [docs/MEASUREMENTS.md](./docs/MEASUREMENTS.md)
 
 ### Section
 
@@ -123,11 +128,13 @@ Selecting elements opens the **Property Information** panel (`itemsData` table) 
 ## Recommended workflow
 
 1. Open **Demo School Campus**.
-2. Click **Demo Model** (or load your own IFC / `.frag`).
+2. Click **Demo Model** (or **Convert IFC → .frag** / **Import `.frag`**).
 3. Click elements to inspect properties.
 4. Use **Isolate** / **Classifier** to focus on a storey or category.
-5. Switch to **Length** or **Clip** mode for takeoff / sectioning.
+5. Switch to **Length** or **Area** (remember Enter for areas) or **Clip**.
 6. Create to-dos on problematic elements and revisit them from the table.
+
+More detail: [docs/USER_GUIDE.md](./docs/USER_GUIDE.md)
 
 ---
 
@@ -141,4 +148,4 @@ Placeholder UI for future user / team management.
 
 - To-dos are in-memory per viewer session (not persisted yet).
 - Firebase sync is optional and disabled until real credentials are provided.
-- For production IFC workflows, convert once to `.frag` and reload Fragments (much faster than converting every session). See the [IfcLoader docs](https://docs.thatopen.com/Tutorials/Components/Core/IfcLoader).
+- For production IFC workflows, convert once to `.frag` and reload Fragments (much faster than converting every session). See [docs/IFC_CONVERTER.md](./docs/IFC_CONVERTER.md) and the [IfcLoader docs](https://docs.thatopen.com/Tutorials/Components/Core/IfcLoader).
